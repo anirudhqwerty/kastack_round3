@@ -1,0 +1,9 @@
+dateparser
+elasticsearch==8.11.0
+fastapi
+prefect
+python-dotenv
+python-multipart
+supabase-py
+uvicorn[standard]
+websocket-client

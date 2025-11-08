@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-python-dotenv
-supabase
-websockets
-httpx
-elasticsearch>=8.0.0

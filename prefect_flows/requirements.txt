@@ -1,6 +1,0 @@
-prefect
-supabase
-python-dotenv
-pydantic
-elasticsearch>=8.0.0
-dateparser
