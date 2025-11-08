@@ -13,26 +13,30 @@ This project is a complete, real-time log analytics and ingestion pipeline. It u
 
 ## How It Works (Data Workflow)
 
-**Ingestion:** Log files are uploaded via a POST request (or WebSocket) to the FastAPI server. The server dumps this raw data into the `raw_data` table in Supabase.
+### Ingestion
+A simulator (log_simulator.py) continuously sends log lines via WebSocket to the FastAPI server. The server dumps this raw data into the raw_data table in Supabase.
 
-**ETL (Extract, Transform, Load):** The Prefect script (`prefect_flows/flows.py`) is run.
+### ETL (Extract, Transform, Load)
+A continuous loop runs the Prefect script (prefect_flows.py).
 
-- The `ingest_and_clean` flow pulls from `raw_data`, parses each log line, and inserts the structured data into the `cleaned_data` table.
-- The `index_cleaned` flow pulls from `cleaned_data` and bulk-indexes the records into Elasticsearch.
+- The ingest_and_clean flow pulls from raw_data, parses each log line, and inserts the structured data into the cleaned_data table.
+- The index_cleaned flow pulls from cleaned_data and bulk-indexes the records into Elasticsearch.
 
-**Visualization:**
+### Visualization
 
-- The FastAPI server hosts the `dashboard/index.html` file.
-- When you load the page, the JavaScript (`script.js`) makes API calls to `/api/logs/*`.
-- FastAPI proxies these requests to Elasticsearch, which runs the aggregations and returns the data to populate the charts.
+- The FastAPI server hosts the dashboard/index.html file.
+- The dashboard automatically refreshes every 30 seconds.
+- When it loads, JavaScript (script.js) makes API calls to /api/logs/*.
+- FastAPI proxies these requests to Elasticsearch, which runs the aggregations and returns the latest data to populate the charts.
 
 ## Project Structure
 
 ```
 DataFlow-Monitor/
 │
-├── .env                # (You will create this)
-├── requirements.txt    # (You will create this)
+├── .env
+├── requirements.txt
+├── log_simulator.py
 │
 ├── fastapi_app/
 │   └── main.py
@@ -82,14 +86,13 @@ pip install -r requirements.txt
 **Supabase:**
 
 - Go to your Supabase project's SQL Editor.
-- Copy the contents of `sql/schema.sql` and run it to create your tables.
+- Copy the contents of sql/schema.sql and run it to create your tables.
 - Go to Project Settings > API.
 - Find your Project URL and your service_role Key.
 
 **.env File:**
 
-- Create a file named `.env` in the project root.
-- Add your credentials and the (default) Elastic URL.
+Create a file named .env in the project root and add your credentials:
 
 ```
 SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL_HERE
@@ -97,7 +100,7 @@ SUPABASE_KEY=YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE
 ELASTIC_URL=http://localhost:9200
 ```
 
-## How to Run (The Workflow)
+## How to Run (Continuous Demo Workflow)
 
 You will need four separate terminals open in your project's root directory.
 
@@ -113,7 +116,7 @@ docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=
 
 ### Terminal 2: Start the FastAPI Server
 
-Activate your virtual environment (`.\venv\Scripts\activate`) and start the uvicorn server. This serves both the API and the web dashboard.
+Activate your virtual environment and start the uvicorn server. This serves both the API and the web dashboard.
 
 ```bash
 uvicorn fastapi_app.main:app --host 0.0.0.0 --port 8000
@@ -121,30 +124,30 @@ uvicorn fastapi_app.main:app --host 0.0.0.0 --port 8000
 
 (Leave this running)
 
-### Terminal 3: Ingest Sample Data
+### Terminal 3: Start the Log Simulator
 
-Activate your virtual environment and use `curl.exe` to upload the sample log file to your running API.
-
-```bash
-# (Make sure venv is active in this terminal too)
-curl.exe -X POST -F "file=@sample_data/sample.log" http://localhost:8000/upload-file
-```
-
-You should see a response: `{"inserted":30}`
-
-### Terminal 4: Run the ETL Pipeline
-
-Activate your virtual environment and run the Prefect flow. This will process the 30 raw logs from Supabase and push them to Elasticsearch.
+Activate your virtual environment and run the log_simulator.py script. This will start sending logs to your API.
 
 ```bash
-# (Make sure venv is active in this terminal too)
-python prefect_flows/flows.py
+python log_simulator.py
 ```
 
-You should see output like "Indexed 30 documents into Elasticsearch."
+You will see it send a new log every 3 seconds. Leave this running.
+
+### Terminal 4: Start the Continuous ETL Pipeline
+
+Activate your virtual environment and run the Prefect flow in a continuous loop. This PowerShell command runs the script, waits 10 seconds, and repeats.
+
+```bash
+while (1) { python prefect_flows.py; Start-Sleep -Seconds 10 }
+```
+
+This will now check for new logs every 10 seconds and process them. Leave this running.
 
 ## Final Step: View Your Dashboard
 
-Everything is now running and the data is processed.
+Everything is now running in a continuous loop.
 
 Go to your browser and open: http://localhost:8000
+
+The dashboard auto-refreshes every 30 seconds. You will see the "Total Logs" count and other charts update automatically as new logs are ingested and processed.
