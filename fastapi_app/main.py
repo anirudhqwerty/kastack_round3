@@ -33,10 +33,10 @@ es = Elasticsearch([ELASTIC_URL])
 
 
 # --- API ENDPOINTS ---
-
+#Uploads and ingests a text file containing log data.
 @app.post("/upload-file", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...), source: str = "file-upload"):
-    # ... (your existing code for this function, no changes)
+    
     content = (await file.read()).decode("utf-8", errors="ignore")
     lines = [line.strip() for line in content.splitlines() if line.strip()]
     rows = []
@@ -48,10 +48,10 @@ async def upload_file(file: UploadFile = File(...), source: str = "file-upload")
     inserted = len(rows)
     return {"inserted": inserted}
 
-
+#Allows clients to stream logs in real-time
 @app.websocket("/ws/logs")
 async def websocket_logs(ws: WebSocket):
-    # ... (your existing code for this function, no changes)
+    
     await ws.accept()
     try:
         while True:
@@ -70,7 +70,7 @@ async def websocket_logs(ws: WebSocket):
 
 @app.get("/api/logs/over-time")
 def logs_over_time(index="logs"):
-    # ... (your existing code for this function, no changes)
+    
     body = {
         "size": 0,
         "query": {"range": {"timestamp": {"gte": "now-60m"}}},
@@ -88,7 +88,7 @@ def logs_over_time(index="logs"):
 
 @app.get("/api/logs/levels")
 def logs_by_level(index="logs"):
-    # ... (your existing code for this function, no changes)
+    
     body = {
         "size": 0,
         "aggs": {"levels": {"terms": {"field": "level.keyword", "size": 10}}}
@@ -100,7 +100,7 @@ def logs_by_level(index="logs"):
 
 @app.get("/api/logs/top-hosts")
 def top_hosts(index="logs"):
-    # ... (your existing code for this function, no changes)
+    
     body = {
         "size": 0,
         "aggs": {"hosts": {"terms": {"field": "host.keyword", "size": 10}}}

@@ -139,7 +139,7 @@ You will see it send a new log every 3 seconds. Leave this running.
 Activate your virtual environment and run the Prefect flow in a continuous loop. This PowerShell command runs the script, waits 10 seconds, and repeats.
 
 ```bash
-while (1) { python prefect_flows.py; Start-Sleep -Seconds 10 }
+while (1) { python python prefect_flows/flows.py; Start-Sleep -Seconds 10 }
 ```
 
 This will now check for new logs every 10 seconds and process them. Leave this running.
