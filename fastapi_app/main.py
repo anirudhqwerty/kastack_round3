@@ -2,6 +2,10 @@ import os
 import asyncio
 from fastapi import FastAPI, UploadFile, File, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.responses import JSONResponse
+# Add these new imports
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+# ---
 from supabase import create_client
 from pydantic import BaseModel
 from datetime import datetime
@@ -21,9 +25,18 @@ app = FastAPI(title="DataFlow Monitor - Ingest API")
 class FileUploadResponse(BaseModel):
     inserted: int
 
+# Simple dashboard proxy (queries ES)
+from elasticsearch import Elasticsearch
+
+ELASTIC_URL = os.getenv("ELASTIC_URL", "http://localhost:9200")
+es = Elasticsearch([ELASTIC_URL])
+
+
+# --- API ENDPOINTS ---
+
 @app.post("/upload-file", response_model=FileUploadResponse)
 async def upload_file(file: UploadFile = File(...), source: str = "file-upload"):
-    """Accept plain text files where each line is a log message (or JSON)."""
+    # ... (your existing code for this function, no changes)
     content = (await file.read()).decode("utf-8", errors="ignore")
     lines = [line.strip() for line in content.splitlines() if line.strip()]
     rows = []
@@ -35,9 +48,10 @@ async def upload_file(file: UploadFile = File(...), source: str = "file-upload")
     inserted = len(rows)
     return {"inserted": inserted}
 
+
 @app.websocket("/ws/logs")
 async def websocket_logs(ws: WebSocket):
-    """Accept streaming logs from a client. Each text message is a new log line."""
+    # ... (your existing code for this function, no changes)
     await ws.accept()
     try:
         while True:
@@ -53,15 +67,10 @@ async def websocket_logs(ws: WebSocket):
     except WebSocketDisconnect:
         return
 
-# Simple dashboard proxy (queries ES)
-from elasticsearch import Elasticsearch
-
-ELASTIC_URL = os.getenv("ELASTIC_URL", "http://localhost:9200")
-es = Elasticsearch([ELASTIC_URL])
 
 @app.get("/api/logs/over-time")
 def logs_over_time(index="logs"):
-    # simple aggregation: per minute last 60 minutes
+    # ... (your existing code for this function, no changes)
     body = {
         "size": 0,
         "query": {"range": {"timestamp": {"gte": "now-60m"}}},
@@ -76,8 +85,10 @@ def logs_over_time(index="logs"):
     data = [{"ts": b["key_as_string"], "count": b["doc_count"]} for b in buckets]
     return JSONResponse(data)
 
+
 @app.get("/api/logs/levels")
 def logs_by_level(index="logs"):
+    # ... (your existing code for this function, no changes)
     body = {
         "size": 0,
         "aggs": {"levels": {"terms": {"field": "level.keyword", "size": 10}}}
@@ -86,8 +97,10 @@ def logs_by_level(index="logs"):
     buckets = res["aggregations"]["levels"]["buckets"]
     return JSONResponse([{"level": b["key"], "count": b["doc_count"]} for b in buckets])
 
+
 @app.get("/api/logs/top-hosts")
 def top_hosts(index="logs"):
+    # ... (your existing code for this function, no changes)
     body = {
         "size": 0,
         "aggs": {"hosts": {"terms": {"field": "host.keyword", "size": 10}}}
@@ -95,3 +108,10 @@ def top_hosts(index="logs"):
     res = es.search(index=index, body=body)
     buckets = res["aggregations"]["hosts"]["buckets"]
     return JSONResponse([{"host": b["key"], "count": b["doc_count"]} for b in buckets])
+
+
+app.mount("/static", StaticFiles(directory="dashboard"), name="static")
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return FileResponse("dashboard/index.html")
