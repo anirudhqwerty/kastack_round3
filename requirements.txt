@@ -4,6 +4,6 @@ fastapi
 prefect
 python-dotenv
 python-multipart
-supabase-py
+supabase
 uvicorn[standard]
 websocket-client
